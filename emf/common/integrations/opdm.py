@@ -10,7 +10,7 @@ from emf.common.config_parser import parse_app_properties
 
 logger = logging.getLogger(__name__)
 
-parse_app_properties(globals(), config.paths.opdm_integration.opdm)
+parse_app_properties(globals(), config.paths.integrations.opdm)
 
 
 class OPDM(opdm_api.create_client):
@@ -47,8 +47,7 @@ class OPDM(opdm_api.create_client):
                 response = self.get_content(file_id, return_payload=True)
 
                 with open(file_path, 'wb') as file_object:
-                    message64_bytes = response['sm:GetContentResult']['sm:part'][1]['opdm:Profile'][
-                        'opde:Content'].encode()
+                    message64_bytes = response['sm:GetContentResult']['sm:part'][1]['opdm:Profile']['opde:Content'].encode()
                     file_object.write(base64.b64decode(message64_bytes))
 
                 logger.info(f"Saved to {file_path}")
@@ -69,7 +68,7 @@ class OPDM(opdm_api.create_client):
                 # If file is not available on local client, lets request it and download it
                 if not content_data:
                     logger.warning("File not present on local client, requesting from OPDM service")
-                    #content_meta = self.get_content(model_part_meta['opde:Id'])
+                    content_meta = self.get_content(model_part_meta['opde:Id'])
                     content_data = self.get_file(model_part_name)
 
                 if not content_data:
@@ -133,7 +132,7 @@ class OPDM(opdm_api.create_client):
         boundary_data = pandas.DataFrame([x['opdm:OPDMObject'] for x in boundaries])
 
         # Convert date and version to respective formats
-        boundary_data['date_time'] = pandas.to_datetime(boundary_data['pmd:scenarioDate'])
+        boundary_data['date_time'] = pandas.to_datetime(boundary_data['pmd:scenarioDate'], format='ISO8601')
         boundary_data['version'] = pandas.to_numeric(boundary_data['pmd:versionNumber'])
 
         # Sort out official boundary

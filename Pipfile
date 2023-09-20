@@ -1,7 +1,7 @@
 [[source]]
-url = "https://pypi.org/simple"
-verify_ssl = true
-name = "pypi"
+url = "https://artifactory.elering.sise/artifactory/api/pypi/pssepip/simple/"
+verify_ssl = false
+name = "pip_conf_index_install"
 
 [packages]
 pandas = "*"
@@ -11,9 +11,15 @@ lxml = "*"
 edx = "*"
 opdm-api = "*"
 triplets = "*"
+ndjson = "*"
+elasticsearch = "*"
+minio = "*"
+pytz = "*"
+requests = "*"
 
 [dev-packages]
 tabulate = "*"
+pyvis = "*"
 
 [requires]
 python_version = "3.11"
