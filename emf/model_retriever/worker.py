@@ -1,23 +1,18 @@
 import logging
-import sys
 import time
-
 import config
 import json
+import uuid
 from emf.model_retriever import model_retriever
 from emf.common.integrations import elastic, opdm, minio, edx
+from emf.common.logging import custom_logger
 from emf.common.config_parser import parse_app_properties
 
-parse_app_properties(caller_globals=globals(), path=config.paths.model_retriever.model_retriever)
-
+# Initialize custom logger
+custom_logger.initialize_custom_logger(extra={'worker': 'model-retriever', 'worker_uuid': str(uuid.uuid4())})
 logger = logging.getLogger(__name__)
 
-logging.basicConfig(
-    format='%(levelname) -10s %(asctime) -20s %(name) -45s %(funcName) -35s %(lineno) -5d: %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    level=logging.INFO,
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
+parse_app_properties(caller_globals=globals(), path=config.paths.model_retriever.model_retriever)
 
 edx_service = edx.EDX()
 opdm_service = opdm.OPDM()
@@ -37,7 +32,6 @@ while True:
     opdm_objects = model_retriever.opde_models_to_minio(opdm_objects=opdm_objects, opdm_service=opdm_service, minio_service=minio_service)
 
     # TODO Validate model
-
 
     for opdm_object in opdm_objects:
         # Removing content from opdm_object to only keep the model metadata

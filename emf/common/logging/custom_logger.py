@@ -1,15 +1,51 @@
 import sys
 import logging
 import requests
-from integrations import elastic
+from emf.common.integrations import elastic
+import config
+from emf.common.config_parser import parse_app_properties
 
 logger = logging.getLogger(__name__)
 
+parse_app_properties(caller_globals=globals(), path=config.paths.logging.custom_logger)
+
+
+def initialize_custom_logger(
+        level: str = LOGGING_LEVEL,
+        format: str = LOGGING_FORMAT,
+        datefmt: str = LOGGING_DATEFMT,
+        elk_server: str = elastic.ELK_SERVER,
+        index: str = LOGGING_INDEX,
+        extra: None | dict = None,
+        fields_filter: None | list = None,
+        ):
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+    root_logger.propagate = True
+
+    # Configure stream logging handler
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_formatter = logging.Formatter(fmt=format, datefmt=datefmt)
+    stream_handler.setFormatter(stream_formatter)
+    root_logger.addHandler(stream_handler)
+
+    # Configure Elk logging handler
+    elk_handler = ElkLoggingHandler(elk_server=elk_server, index=index, extra=extra, fields_filter=fields_filter)
+
+    if elk_handler.connected:
+        root_logger.addHandler(elk_handler)
+    else:
+        logger.warning(f"Elk logging handler not initialized")
+
+    return elk_handler
+
+
 class ElkLoggingHandler(logging.StreamHandler):
 
-    def __init__(self, elk_server, index, extra=None, fields_filter=None):
+    def __init__(self, elk_server=elastic.ELK_SERVER, index=LOGGING_INDEX, extra=None, fields_filter=None):
         """
-        Initialize ELK logger
+        Initialize ELK logging handler
         :param elk_server: url of ELK stack server
         :param index: ELK index pattern
         :param extra: additional log field in dict format
@@ -29,11 +65,11 @@ class ElkLoggingHandler(logging.StreamHandler):
                 logger.info(f"Connection to {self.server} successful")
                 return True
             else:
-                logger.warning(f"ELK server response -> [{response.status_code}] {response.reason}. Disabling ELK logging.")
+                logger.warning(f"ELK server response: [{response.status_code}] {response.reason}. Disabling ELK logging.")
         except requests.exceptions.ConnectTimeout:
             logger.warning(f"ELK server {self.server} does not responding with ConnectTimeout error. Disabling ELK logging.")
         except Exception as e:
-            logger.warning(f"ELK server {self.server} returned unknown error -> {e}")
+            logger.warning(f"ELK server {self.server} returned unknown error: {e}")
 
     def elk_formatter(self, record):
         elk_record = record.__dict__
@@ -50,7 +86,7 @@ class ElkLoggingHandler(logging.StreamHandler):
             elk_record.update(self.extra)
 
         # Send to Elk
-        elastic.Elk.send_to_elastic(index=self.index, json_message=elk_record, server=self.server)
+        elastic.Elastic.send_to_elastic(index=self.index, json_message=elk_record, server=self.server)
 
 
 if __name__ == '__main__':
@@ -63,7 +99,7 @@ if __name__ == '__main__':
                         )
 
     # Test ELK custom logger
-    index = 'logger-debug'
+    index = 'debug-emfos-logs'
     server = "http://test-rcc-logs-master.elering.sise:9200"
     elk_handler = ElkLoggingHandler(elk_server=server, index=index, extra={'time_horizon': '1D'})
     if elk_handler.connected:
